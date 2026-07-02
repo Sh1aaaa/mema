@@ -10,7 +10,9 @@ app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'fiscal_orchestration_fallba
 
 db = MockDatabase()
 rag_engine = PayrollRAGEngine()
-CSV_FILE_PATH = 'attendance_source.csv'
+
+# FIX: Moved the target file path to Vercel's writeable temporary folder sandbox
+CSV_FILE_PATH = '/tmp/attendance_source.csv'
 AI_MODEL_ID = "Qwen/Qwen2.5-Coder-7B-Instruct"
 
 HF_TOKEN = os.environ.get("HF_TOKEN")
@@ -19,9 +21,10 @@ hf_client = InferenceClient(
     token=HF_TOKEN
 )
 
+# FIX: Automatically creates the mock seed data inside /tmp on startup so the engine doesn't crash
 if not os.path.exists(CSV_FILE_PATH):
     try:
-        with open(CSV_FILE_PATH, 'w') as f:
+        with open(CSV_FILE_PATH, 'w', encoding='utf-8') as f:
             f.write("employee_id,name,daily_rate,days_worked,tardiness_mins\n1001,John Doe,600,22,30\n1002,Jane Smith,750,20,0\n")
     except IOError:
         pass
@@ -78,7 +81,7 @@ def dashboard():
             if 'csv_data' in request.form:
                 csv_data = request.form['csv_data']
                 try:
-                    with open(CSV_FILE_PATH, 'w') as f:
+                    with open(CSV_FILE_PATH, 'w', encoding='utf-8') as f:
                         f.write(csv_data.strip())
                     flash('Master attendance registry updated safely.', 'success')
                 except IOError:
@@ -98,7 +101,7 @@ def dashboard():
 
     if role == 'Super Admin' and os.path.exists(CSV_FILE_PATH):
         try:
-            with open(CSV_FILE_PATH, 'r') as f:
+            with open(CSV_FILE_PATH, 'r', encoding='utf-8') as f:
                 csv_content = f.read()
         except IOError:
             csv_content = "Error loading registry source file."
