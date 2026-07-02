@@ -16,9 +16,9 @@ CSV_FILE_PATH = '/tmp/attendance_source.csv'
 AI_MODEL_ID = "Qwen/Qwen2.5-Coder-7B-Instruct"
 
 HF_TOKEN = os.environ.get("HF_TOKEN")
-# Forcing an explicit endpoint URL bypasses Vercel's hobby DNS resolution restrictions
+# Fixed Initialization: Passing model name directly to prevent keyword conflicts across different versions
 hf_client = InferenceClient(
-    base_url=f"https://api-inference.huggingface.co/models/{AI_MODEL_ID}",
+    model=AI_MODEL_ID,
     token=HF_TOKEN
 )
 
@@ -81,7 +81,6 @@ def forgot_password():
         elif new_password != confirm_password:
             error_msg = 'Passwords do not match.'
         else:
-            # Update password inside our database model instance
             user.password = new_password  
             flash('Password updated successfully! Please log in with your new credentials.', 'success')
             return redirect(url_for('login'))
@@ -177,10 +176,7 @@ def audit_desk():
         return jsonify({'explanation': "The RAG Engine is missing authentication configurations."})
 
     try:
-        # Construct a clean structured instruction string for legacy-safe processing
         full_prompt = f"<|system|>\n{system_prompt}\n<|user|>\n{user_message}\n<|assistant|>\n"
-
-        # Universal client method execution to completely bypass Vercel environment library differences
         ai_response = hf_client.text_generation(
             prompt=full_prompt,
             max_new_tokens=400,
