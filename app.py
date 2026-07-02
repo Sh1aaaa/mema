@@ -16,8 +16,9 @@ CSV_FILE_PATH = '/tmp/attendance_source.csv'
 AI_MODEL_ID = "Qwen/Qwen2.5-Coder-7B-Instruct"
 
 HF_TOKEN = os.environ.get("HF_TOKEN")
+# Forcing an explicit endpoint URL bypasses Vercel's hobby DNS resolution restrictions
 hf_client = InferenceClient(
-    model=AI_MODEL_ID,
+    base_url=f"https://api-inference.huggingface.co/models/{AI_MODEL_ID}",
     token=HF_TOKEN
 )
 
@@ -65,6 +66,27 @@ def login():
             return redirect(url_for('dashboard'))
         error_msg = 'Invalid institutional credentials.'
     return render_template('login.html', error=error_msg)
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    error_msg = None
+    if request.method == 'POST':
+        emp_id = request.form['employee_id']
+        new_password = request.form['new_password']
+        confirm_password = request.form['confirm_password']
+
+        user = db.get_user(emp_id)
+        if not user:
+            error_msg = 'Employee ID not found in institutional records.'
+        elif new_password != confirm_password:
+            error_msg = 'Passwords do not match.'
+        else:
+            # Update password inside our database model instance
+            user.password = new_password  
+            flash('Password updated successfully! Please log in with your new credentials.', 'success')
+            return redirect(url_for('login'))
+            
+    return render_template('forgot_password.html', error=error_msg)
 
 @app.route('/dashboard', methods=['GET', 'POST'])
 def dashboard():
