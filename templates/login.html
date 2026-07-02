@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign In - Fiscal Orchestration Engine</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link class="main-css" rel="stylesheet" href="/static/css/style.css">
     <style>
         body { display: flex; min-height: 100vh; flex-direction: column; justify-content: center; align-items: center; }
         .auth-container { width: 100%; max-width: 420px; padding: 20px; }
@@ -16,7 +16,6 @@
         .auth-footer { text-align: center; margin-top: 24px; font-size: 0.875rem; color: #64748b; }
         .auth-link { color: var(--accent); text-decoration: none; font-weight: 500; }
         .auth-link:hover { text-decoration: underline; }
-        .forgot-password-container { text-align: center; margin-top: 16px; font-size: 0.875rem; }
     </style>
 </head>
 <body>
@@ -53,9 +52,9 @@
                 </div>
                 <button type="submit" class="btn btn-primary" style="width:100%; padding:12px; margin-top:8px;">Verify Credentials</button>
                 
-                <!-- Perfectly Centered Forgot Password Link -->
-                <div class="forgot-password-container">
-                    <a href="{{ url_for('forgot_password') }}" class="auth-link">Forgot Password?</a>
+                <!-- Explicit block layout forces absolute horizontal alignment centering -->
+                <div style="display: block !important; text-align: center !important; width: 100% !important; margin-top: 16px !important; clear: both !important;">
+                    <a href="{{ url_for('forgot_password') }}" class="auth-link" style="display: inline-block !important; text-align: center !important; float: none !important;">Forgot Password?</a>
                 </div>
             </form>
             <p class="auth-footer">New hire registry portal? <a href="/register" class="auth-link">Register Here</a></p>
