@@ -11,7 +11,7 @@ app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'fiscal_orchestration_fallba
 db = MockDatabase()
 rag_engine = PayrollRAGEngine()
 
-# FIX: Moved the target file path to Vercel's writeable temporary folder sandbox
+# Target file path directed to Vercel's writeable temporary folder sandbox
 CSV_FILE_PATH = '/tmp/attendance_source.csv'
 AI_MODEL_ID = "Qwen/Qwen2.5-Coder-7B-Instruct"
 
@@ -21,7 +21,7 @@ hf_client = InferenceClient(
     token=HF_TOKEN
 )
 
-# FIX: Automatically creates the mock seed data inside /tmp on startup so the engine doesn't crash
+# Automatically creates the mock seed data inside /tmp on startup
 if not os.path.exists(CSV_FILE_PATH):
     try:
         with open(CSV_FILE_PATH, 'w', encoding='utf-8') as f:
@@ -155,17 +155,16 @@ def audit_desk():
         return jsonify({'explanation': "The RAG Engine is missing authentication configurations."})
 
     try:
-        completion = hf_client.chat.completions.create(
-            model=AI_MODEL_ID,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message}
-            ],
-            max_tokens=400,
+        # Construct a clean structured instruction string for legacy-safe processing
+        full_prompt = f"<|system|>\n{system_prompt}\n<|user|>\n{user_message}\n<|assistant|>\n"
+
+        # Universal client method execution to completely bypass Vercel environment library differences
+        ai_response = hf_client.text_generation(
+            prompt=full_prompt,
+            max_new_tokens=400,
             temperature=0.1
         )
-        ai_response = completion.choices[0].message.content
-        return jsonify({'explanation': ai_response})
+        return jsonify({'explanation': ai_response.strip()})
     except Exception as e:
         return jsonify({'explanation': f"The RAG Desk gateway encountered an infrastructure error: {str(e)}"})
 
@@ -176,4 +175,3 @@ def logout():
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
-
