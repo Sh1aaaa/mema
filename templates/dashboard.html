@@ -36,15 +36,63 @@
         {% if session_role == 'Super Admin' %}
             <section class="dashboard-section">
                 <h3>Master Attendance Ledger Management</h3>
-                <p class="section-desc">Provide or modify the authoritative time-tracking source matrix. Changes immediately alter baseline computation boundaries.</p>
+                <p class="section-desc">Provide or modify the authoritative time-tracking source matrix. Preview computations or finalize baseline boundaries.</p>
 
                 <form method="POST" action="/dashboard">
                     <div class="form-group">
                         <label style="display:block; font-weight:bold; margin-bottom:6px;">Active Master CSV Content</label>
                         <textarea name="csv_data" rows="12" placeholder="employee_id,name,daily_rate,days_worked,tardiness_mins">{{ csv_content }}</textarea>
                     </div>
-                    <button type="submit" class="btn btn-primary">Commit Master CSV Data</button>
+                    <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+                        <button type="submit" name="preview_csv" class="btn btn-success" style="background-color: #0284c7; border-color: #0284c7;">
+                            🔍 Preview Calculations
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            💾 Commit Master CSV Data
+                        </button>
+                    </div>
                 </form>
+
+                {% if preview_data %}
+                    <div class="approval-card" style="border-left: 4px solid #0284c7; background: #f0f9ff; margin-bottom: 25px;">
+                        <h4 style="color: #0369a1; margin-top: 0;">🛠️ Pre-Commit Calculations Preview</h4>
+                        <p class="section-desc">The metrics below represent what the <code>COAPayrollEngine</code> extracted from your text box above. If these values are accurate, click <strong>Commit Master CSV Data</strong> above to pass them to HR.</p>
+                        
+                        <div class="table-responsive" style="margin-top: 15px; background: #ffffff; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Emp ID</th>
+                                        <th>Gross Pay</th>
+                                        <th>Deductions</th>
+                                        <th>Net Take-Home</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if preview_data is mapping %}
+                                        {% for emp_id, record in preview_data.items() %}
+                                        <tr>
+                                            <td><strong>{{ emp_id }}</strong></td>
+                                            <td>₱{{ "%.2f"|format(record.get('gross_pay', 0)) }}</td>
+                                            <td class="text-deduction">-₱{{ "%.2f"|format(record.get('deductions', 0)) }}</td>
+                                            <td class="text-net" style="font-weight: bold;">₱{{ "%.2f"|format(record.get('net_pay', 0)) }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        {% for record in preview_data %}
+                                        <tr>
+                                            <td><strong>{{ record.get('employee_id', 'N/A') }}</strong></td>
+                                            <td>₱{{ "%.2f"|format(record.get('gross_pay', 0)) }}</td>
+                                            <td class="text-deduction">-₱{{ "%.2f"|format(record.get('deductions', 0)) }}</td>
+                                            <td class="text-net" style="font-weight: bold;">₱{{ "%.2f"|format(record.get('net_pay', 0)) }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                {% endif %}
 
                 <div class="approval-card">
                     <h4>Internal Control Approval Pipeline</h4>
