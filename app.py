@@ -1,9 +1,14 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from dotenv import load_dotenv # Fixes the missing configuration by loading environment variables
+import os
+
+# Load environment variables from .env file immediately on startup
+load_dotenv()
+
 from payroll_engine import COAPayrollEngine
 from models import MockDatabase, User
 from payroll_rag import PayrollRAGEngine
 from huggingface_hub import InferenceClient
-import os
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'fiscal_orchestration_fallback_key')
@@ -96,20 +101,46 @@ def dashboard():
     user_id = session['user_id']
     csv_content = ""
     emp_record = None
+    preview_data = None  # Holds temporary dry-run calculation results
 
     if request.method == 'POST':
         if role == 'Super Admin':
-            if 'csv_data' in request.form:
+            # ACTION A: Preview calculations without mutating master files
+            if 'preview_csv' in request.form:
+                csv_data = request.form['csv_data']
+                try:
+                    TEMP_PREVIEW_PATH = '/tmp/preview_attendance.csv'
+                    with open(TEMP_PREVIEW_PATH, 'w', encoding='utf-8') as f:
+                        f.write(csv_data.strip())
+                    
+                    # Dry-run parsing through the engine
+                    preview_engine = COAPayrollEngine(TEMP_PREVIEW_PATH)
+                    processed_results, msg = preview_engine.validate_and_process()
+                    
+                    if processed_results:
+                        preview_data = processed_results
+                        flash("Staging dry-run completed. Review preview calculations below before committing.", "success")
+                        csv_content = csv_data  # Retains modified value in text box
+                    else:
+                        flash(f"Engine validation failed: {msg}", "error")
+                except Exception as e:
+                    flash(f"System extraction error: {str(e)}", "error")
+
+            # ACTION B: Save permanently to the HR staging files
+            elif 'csv_data' in request.form:
                 csv_data = request.form['csv_data']
                 try:
                     with open(CSV_FILE_PATH, 'w', encoding='utf-8') as f:
                         f.write(csv_data.strip())
-                    flash('Master attendance registry updated safely.', 'success')
+                    flash('Master attendance registry committed safely and sent to HR Clerk.', 'success')
                 except IOError:
                     flash('Database adjustment error: File system is read-only.', 'error')
+            
+            # ACTION C: Approve live disbursement state
             elif 'approve_payroll' in request.form:
                 db.approve_all_payroll()
                 flash('Payroll records approved. Disbursed data is now live for institutional employees.', 'success')
+                
         elif role == 'HR Clerk':
             if 'generate_payroll' in request.form:
                 engine = COAPayrollEngine(CSV_FILE_PATH)
@@ -120,7 +151,8 @@ def dashboard():
         else:
             return "Unauthorized State Mutating Action Requested.", 403
 
-    if role == 'Super Admin' and os.path.exists(CSV_FILE_PATH):
+    # Load file contents for Super Admin edit space if not already populated by preview logic
+    if role == 'Super Admin' and not csv_content and os.path.exists(CSV_FILE_PATH):
         try:
             with open(CSV_FILE_PATH, 'r', encoding='utf-8') as f:
                 csv_content = f.read()
@@ -137,7 +169,8 @@ def dashboard():
         session_role=role,
         csv_content=csv_content,
         payroll_registry=db.get_all_payroll(),
-        emp_record=emp_record
+        emp_record=emp_record,
+        preview_data=preview_data  # Pass preview context back to layout
     )
 
 @app.route('/audit-desk', methods=['POST'])
